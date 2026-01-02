@@ -1,4 +1,3 @@
-# GAN_WGAN-GP_gene_expression_data_generation
 # Alzheimer's Disease gene expression data Synthetic Data Generator
 
 ## Overview
