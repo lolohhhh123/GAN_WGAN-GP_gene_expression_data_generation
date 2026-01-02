@@ -13,7 +13,7 @@ This repository contains a Synthetic Data Generator for generating synthetic gen
 - **Multiple Metrics**: Includes KS statistics, distribution metrics, correlation analysis
 - **Visualization**: PCA scatter plots, distribution comparisons, quality score summaries
 - **Batch Processing**: Assess multiple datasets simultaneously
-- 
+
 ## Installation
 ```bash
 git clone https://github.com/yourusername/ad-synthetic-data-generator.git
