@@ -2,7 +2,7 @@
 Synthetic Data Generation for Alzheimer's Disease Research
 using WGAN-GP (Wasserstein Generative Adversarial Network with Gradient Penalty)
 
-This code generates synthetic gene expression data for Alzheimer's Disease research
+This code generates synthetic gene expression data for Alzheimer's Disease research with integrated wPCA quality assessment
 using advanced GAN techniques to maintain statistical properties of original data.
 """
 
@@ -23,6 +23,8 @@ from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
 from sklearn.decomposition import TruncatedSVD
 from scipy.stats import ks_2samp
 from typing import Tuple, Dict, List, Optional, Any
+from pathlib import Path
+import pandas as pd
 
 # Suppress warnings
 warnings.filterwarnings('ignore')
@@ -31,6 +33,188 @@ warnings.filterwarnings('ignore')
 tf.random.set_seed(42)
 np.random.seed(42)
 torch.manual_seed(42)
+
+# Import existing modules
+from synthetic_data_generator import (
+    WGANGP, validate_and_normalize_columns, dynamic_preprocessing,
+    inverse_processing, create_wgan_gp_generator_discriminator,
+    generate_wgan_gp_samples
+)
+
+# Import new quality assessment module
+from data_quality_assessment import DataQualityAssessor
+
+
+def generate_and_evaluate_with_wpca(dataset_name: str, run_number: int, 
+                                   data_path: Path, num_samples: int = 100) -> Optional[Dict]:
+    """Generate synthetic data and perform wPCA quality assessment"""
+    print(f"\n{'='*50}")
+    print(f"Processing {dataset_name} - Run {run_number}")
+    print(f"{'='*50}")
+    
+    try:
+        # Create output directories
+        output_dir = data_path / f"WGAN-GP_{run_number}"
+        quality_dir = output_dir / "quality_assessment"
+        output_dir.mkdir(exist_ok=True, parents=True)
+        quality_dir.mkdir(exist_ok=True)
+        
+        # Load and process data (existing code)
+        train_file = data_path / f"{dataset_name}_train.xlsx"
+        train_df = pd.read_excel(train_file, index_col=0)
+        train_df = validate_and_normalize_columns(train_df)
+        
+        gene_names = train_df.index.tolist()
+        
+        # Generate synthetic data (existing WGAN-GP code)
+        # ... [existing generation code] ...
+        
+        # Save synthetic data
+        synthetic_path = output_dir / f"{dataset_name}_synthetic_all.xlsx"
+        synthetic_df.to_excel(synthetic_path)
+        
+        # Perform wPCA quality assessment
+        print("\nPerforming wPCA quality assessment...")
+        assessor = DataQualityAssessor(random_seed=42)
+        
+        # Prepare real data file
+        real_temp_path = output_dir / f"{dataset_name}_real_temp.csv"
+        train_df.to_csv(real_temp_path)
+        
+        # Run comprehensive quality assessment
+        quality_report, _ = assessor.comprehensive_data_quality_assessment(
+            real_temp_path, synthetic_path, quality_dir
+        )
+        
+        if quality_report is not None:
+            # Save quality report
+            quality_report['dataset'] = dataset_name
+            quality_report['run'] = run_number
+            
+            report_df = pd.DataFrame([quality_report])
+            report_path = quality_dir / "quality_report.csv"
+            report_df.to_csv(report_path, index=False)
+            
+            print(f"wPCA score: {quality_report.get('wpca_score', 'N/A'):.4f}")
+            print(f"Overall quality score: {quality_report.get('overall_quality_score', 'N/A'):.4f}")
+        
+        # Clean up temporary file
+        if real_temp_path.exists():
+            real_temp_path.unlink()
+        
+        return {
+            'dataset': dataset_name,
+            'run': run_number,
+            'wpca_score': quality_report.get('wpca_score', np.nan),
+            'overall_quality': quality_report.get('overall_quality_score', np.nan),
+            'output_dir': str(output_dir)
+        }
+        
+    except Exception as e:
+        print(f"Error in generation with wPCA assessment: {e}")
+        return None
+
+def main_with_wpca():
+    """Main function with integrated wPCA assessment"""
+    data_path = Path(r"b:/20230315-manuscript/AD/STD")
+    
+    # Find datasets
+    base_names = set()
+    for f in os.listdir(data_path):
+        if f.endswith("_train.xlsx"):
+            dataset_name = f.split("_train.xlsx")[0]
+            test_file = data_path / f"{dataset_name}_test.xlsx"
+            if test_file.exists():
+                base_names.add(dataset_name)
+                print(f"Found dataset: {dataset_name}")
+    
+    print(f"Found {len(base_names)} datasets: {list(base_names)}")
+    
+    # Store all results
+    all_results = []
+    
+    # Process each dataset
+    for dataset_idx, dataset_name in enumerate(base_names, 1):
+        print(f"\n{'='*60}")
+        print(f"Processing dataset [{dataset_idx}/{len(base_names)}]: {dataset_name}")
+        print(f"{'='*60}")
+        
+        # Multiple runs per dataset
+        for run in range(1, 11):
+            result = generate_and_evaluate_with_wpca(
+                dataset_name, run, data_path, num_samples=100
+            )
+            
+            if result:
+                all_results.append(result)
+            else:
+                print(f"Warning: Run {run} for dataset {dataset_name} failed")
+    
+    # Generate summary report
+    if all_results:
+        print(f"\n{'='*60}")
+        print("All processing completed! Summary results:")
+        print(f"{'='*60}")
+        
+        summary_df = pd.DataFrame(all_results)
+        
+        # Calculate statistics per dataset
+        dataset_summary = summary_df.groupby('dataset').agg({
+            'wpca_score': ['mean', 'std', 'min', 'max'],
+            'overall_quality': ['mean', 'std', 'min', 'max']
+        }).round(4)
+        
+        # Save summary results
+        summary_path = data_path / "wpca_assessment_summary.xlsx"
+        dataset_summary_path = data_path / "dataset_wpca_statistics.xlsx"
+        
+        summary_df.to_excel(summary_path, index=False)
+        dataset_summary.to_excel(dataset_summary_path)
+        
+        print("Summary results saved to:")
+        print(f"- {summary_path}")
+        print(f"- {dataset_summary_path}")
+        
+        # Print results
+        print("\nwPCA scores per dataset:")
+        for dataset, row in dataset_summary.iterrows():
+            wpca_mean = row[('wpca_score', 'mean')]
+            quality_mean = row[('overall_quality', 'mean')]
+            print(f"  {dataset}: wPCA={wpca_mean:.4f}, Overall={quality_mean:.4f}")
+    
+    print(f"\nAll quality assessments saved in WGAN-GP_*/quality_assessment folders")
+
+
+def run_batch_wpca_assessment():
+    """Run batch wPCA assessment on existing generated data"""
+    data_path = Path(r"b:/20230315-manuscript/AD/STD")
+    real_data_dir = data_path / "original"
+    output_base = data_path / "wpca_results"
+    
+    # Initialize assessor
+    assessor = DataQualityAssessor(random_seed=42)
+    
+    # Run assessment for each WGAN-GP run
+    for run in range(1, 11):
+        synthetic_dir = data_path / f"WGAN-GP_{run}"
+        if not synthetic_dir.exists():
+            continue
+        
+        print(f"\n{'='*60}")
+        print(f"Running wPCA assessment for WGAN-GP Run {run}")
+        print(f"{'='*60}")
+        
+        output_dir = output_base / f"run_{run}"
+        summary = assessor.batch_quality_assessment(
+            real_data_dir, synthetic_dir, output_dir
+        )
+        
+        if summary is not None:
+            print(f"Completed assessment for run {run}")
+            print(f"Average wPCA score: {summary['wpca_score'].mean():.4f}")
+            print(f"Average overall quality: {summary['overall_quality_score'].mean():.4f}")
+        
+
 
 # ============================================================================
 # PyTorch GAN Components (Legacy Support)
@@ -857,8 +1041,11 @@ def run_pytorch_gan_pipeline():
 # ============================================================================
 
 if __name__ == "__main__":
-    # Run WGAN-GP pipeline (main recommended approach)
-    main()
+    # Option 1: Generate new data with wPCA assessment
+    # main_with_wpca()
+    
+    # Option 2: Run wPCA assessment on existing data
+    run_batch_wpca_assessment()
     
     # Uncomment to run PyTorch GAN pipeline for legacy data
     # run_pytorch_gan_pipeline()
