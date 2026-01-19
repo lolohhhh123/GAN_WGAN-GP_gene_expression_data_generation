@@ -16,8 +16,8 @@ This repository contains a Synthetic Data Generator for generating synthetic gen
 
 ## Installation
 ```bash
-git clone https://github.com/yourusername/ad-synthetic-data-generator.git
-cd ad-synthetic-data-generator
+git clone https://github.com/lolohhhh123/GAN_WGAN-GP_gene_expression_data_generation
+cd GAN_WGAN-GP_gene_expression_data_generation
 pip install -r requirements.txt
 
 ## Single Dataset Assessment
