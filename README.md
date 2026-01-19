@@ -21,7 +21,6 @@ cd GAN_WGAN-GP_gene_expression_data_generation
 pip install -r requirements.txt
 
 ## Single Dataset Assessment
-```python
 from data_quality_assessment import DataQualityAssessor
 
 assessor = DataQualityAssessor(random_seed=42)
