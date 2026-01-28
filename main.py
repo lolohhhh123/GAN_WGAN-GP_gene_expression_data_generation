@@ -1,9 +1,9 @@
 """
 Synthetic Data Generation for Alzheimer's Disease Research
-using WGAN-GP (Wasserstein Generative Adversarial Network with Gradient Penalty)
+using WGAN-GP (Wasserstein Generative Adversarial Network with Gradient Penalty) and GAN
 
 This code generates synthetic gene expression data for Alzheimer's Disease research with integrated wPCA quality assessment
-using advanced GAN techniques to maintain statistical properties of original data.
+using both GAN and WGAN-GP models and provide statistical analysis by comparing the original data and synthetic data.
 """
 
 import os
