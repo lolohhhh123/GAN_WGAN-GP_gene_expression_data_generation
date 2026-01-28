@@ -20,6 +20,12 @@ git clone https://github.com/lolohhhh123/GAN_WGAN-GP_gene_expression_data_genera
 cd GAN_WGAN-GP_gene_expression_data_generation
 pip install -r requirements.txt
 
+# Please set the path for data_path, input_directory and base_output_directory in
+
+line 1038    data_path = Path(r"") #  data_path
+line 1114    input_directory = Path(r"") #Enter the input_directory
+line 1115    base_output_directory = Path(r"") #Enter the base_output_directory
+
 ## Single Dataset Assessment
 from data_quality_assessment import DataQualityAssessor
 
