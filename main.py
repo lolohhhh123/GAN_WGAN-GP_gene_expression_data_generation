@@ -43,8 +43,107 @@ from synthetic_data_generator import (
 
 # Import new quality assessment module
 from data_quality_assessment import DataQualityAssessor
+def generate_samples(generator, scaler, original_data, sample_count=50):
+    try:
+        n_genes = original_data.shape[0]
+        print(f"Generating {sample_count} samples with {n_genes} genes")
+        
+        generated_samples = []
+        sample_names = []
+        
+        noise = torch.randn(sample_count, n_genes)
+        with torch.no_grad():
+            generated_data = generator(noise)
+        
+        generated_data = generated_data.numpy()
+        generated_data = scaler.inverse_transform(generated_data)
+        
+        for i in range(sample_count):
+            sample_names.append(f"Generated_Sample_{i+1}")
+        
+        generated_array = generated_data.T
+        
+        gene_names = original_data.index.tolist() 
+        print(f"Generated array shape: {generated_array.shape}")
+        print(f"Gene names count: {len(gene_names)}")
+        if len(gene_names) != generated_array.shape[0]:
+            print(f"Warning: Dimension mismatch. Got {len(gene_names)} genes, but generated {generated_array.shape[0]} rows")
+            if len(gene_names) < generated_array.shape[0]:
+                generated_array = generated_array[:len(gene_names), :]
+            else:
+                gene_names = gene_names[:generated_array.shape[0]]
+        
+        df = pd.DataFrame(generated_array, index=gene_names, columns=sample_names)
+        
+        print(f"Generated data stats - Min: {df.values.min():.4f}, Max: {df.values.max():.4f}, Mean: {df.values.mean():.4f}, Std: {df.values.std():.4f}")
+        
+        return df
+        
 
-
+def train_gan(data, epochs=1000, batch_size=32, lr=0.0002):
+    
+    try:
+        n_samples, n_features = data.shape
+        print(f"Training data shape: {data.shape}")
+        
+        from sklearn.preprocessing import MinMaxScaler
+        scaler = MinMaxScaler(feature_range=(-1, 1))
+        data_scaled = scaler.fit_transform(data)
+        data_tensor = torch.FloatTensor(data_scaled)
+        
+        # Initialize
+        generator = Generator(n_features, n_features, hidden_dim=256)
+        discriminator = Discriminator(n_features, hidden_dim=256)
+        
+        # Optimizer
+        optimizer_G = optim.Adam(generator.parameters(), lr=lr, betas=(0.5, 0.999))
+        optimizer_D = optim.Adam(discriminator.parameters(), lr=lr, betas=(0.5, 0.999))
+        
+        # Loss function
+        criterion = nn.BCELoss()
+        
+        # Training loops
+        for epoch in range(epochs):
+            for i in range(0, n_samples, batch_size):
+                batch_data = data_tensor[i:i+batch_size]
+                batch_size_current = batch_data.shape[0]
+                
+                # Label
+                real_labels = torch.ones(batch_size_current, 1) * 0.9
+                fake_labels = torch.zeros(batch_size_current, 1) + 0.1
+                
+                # Train Discriminator
+                optimizer_D.zero_grad()
+                
+                # Real and fake data
+                real_outputs = discriminator(batch_data)
+                real_loss = criterion(real_outputs, real_labels)
+                noise = torch.randn(batch_size_current, n_features)
+                fake_data = generator(noise)
+                fake_outputs = discriminator(fake_data.detach())
+                fake_loss = criterion(fake_outputs, fake_labels)
+                
+                d_loss = (real_loss + fake_loss) / 2
+                d_loss.backward()
+                optimizer_D.step()
+                
+                # Train generator
+                optimizer_G.zero_grad()
+                fake_outputs = discriminator(fake_data)
+                g_loss = criterion(fake_outputs, real_labels) 
+                g_loss.backward()
+                optimizer_G.step()
+            
+            if epoch % 100 == 0:
+                print(f'Epoch [{epoch}/{epochs}], D_loss: {d_loss.item():.4f}, G_loss: {g_loss.item():.4f}')
+        
+        return generator, scaler
+        
+    except Exception as e:
+        print(f"Error in train_gan_improved: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return None, None
 def generate_and_evaluate_with_wpca(dataset_name: str, run_number: int, 
                                    data_path: Path, num_samples: int = 100) -> Optional[Dict]:
     """Generate synthetic data and perform wPCA quality assessment"""
@@ -53,6 +152,10 @@ def generate_and_evaluate_with_wpca(dataset_name: str, run_number: int,
     print(f"{'='*50}")
     
     try:
+        # Initialize
+        generator_c = None
+        scaler_c = None
+        epochs = 1000
         # Create output directories
         output_dir = data_path / f"WGAN-GP_{run_number}"
         quality_dir = output_dir / "quality_assessment"
@@ -63,11 +166,13 @@ def generate_and_evaluate_with_wpca(dataset_name: str, run_number: int,
         train_file = data_path / f"{dataset_name}_train.xlsx"
         train_df = pd.read_excel(train_file, index_col=0)
         train_df = validate_and_normalize_columns(train_df)
-        
         gene_names = train_df.index.tolist()
+        train_df_transposed = train_df.T
         
-        # Generate synthetic data (existing WGAN-GP code)
-        # ... [existing generation code] ...
+        if generator_c is None or scaler_c is None:
+            generator_c, scaler_c = train_gan(train_df_transposed.values, epochs=epochs, batch_size=16)
+                
+        synthetic_df = generate_samples(generator_c, scaler_c, train_df, sample_count=50)
         
         # Save synthetic data
         synthetic_path = output_dir / f"{dataset_name}_synthetic_all.xlsx"
@@ -1006,8 +1111,8 @@ def main():
 
 def run_pytorch_gan_pipeline():
     """Run the PyTorch GAN pipeline for legacy CSV data"""
-    input_directory = Path(r"B:\20230315-manuscript\AD\STD\original")
-    base_output_directory = Path(r"B:\20230315-manuscript\AD\STD")
+    input_directory = Path(r"") #Enter the input_directory
+    base_output_directory = Path(r"") #Enter the base_output_directory
     
     num_runs = 10
     for i in range(num_runs):
