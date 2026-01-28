@@ -1035,7 +1035,7 @@ def process_dataset_pytorch_gan(file_path: Path, output_dir: Path, epochs: int =
 def main():
     """Main execution function"""
     # Define data paths
-    data_path = Path(r"b:/20230315-manuscript/AD/STD")
+    data_path = Path(r"") # Please enter the data_path
     
     # Find all available datasets
     base_names = set()
