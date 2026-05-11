@@ -1,4 +1,4 @@
-# Alzheimer's Disease gene expression data Synthetic Data Generator
+# Gene expression data generation
 
 ## Overview
 This repository contains a Synthetic Data Generator for generating gene expression data for Alzheimer's Disease research. It implements GAN，WGAN-GP (Wasserstein Generative Adversarial Network with Gradient Penalty)，diffusion and VAE models approaches with quality assessment with Weighted quality scores (WQS) to create high quality and statistically similar synthetic data while preserving the biological characteristics of the original datasets.
