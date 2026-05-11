@@ -1,36 +1,31 @@
 # Alzheimer's Disease gene expression data Synthetic Data Generator
 
 ## Overview
-This repository contains a Synthetic Data Generator for generating synthetic gene expression data for Alzheimer's Disease research. It implements both WGAN-GP (Wasserstein Generative Adversarial Network with Gradient Penalty) and traditional GAN approaches with quality assessment with wPCA scoring to create high quality and statistically similar synthetic data while preserving the biological characteristics of the original datasets.
+This repository contains a Synthetic Data Generator for generating gene expression data for Alzheimer's Disease research. It implements GAN，WGAN-GP (Wasserstein Generative Adversarial Network with Gradient Penalty)，diffusion and VAE models approaches with quality assessment with Weighted quality scores (WQS) to create high quality and statistically similar synthetic data while preserving the biological characteristics of the original datasets.
 
 ## Features
-- **Dual GAN Support**: Both WGAN-GP (TensorFlow) and traditional GAN (PyTorch) implementations
 - **Automatic Preprocessing**: Robust data normalization and dimensionality reduction
-- **Statistical Evaluation**: Kolmogorov-Smirnov tests for distribution comparison
 - **Multiple Runs**: Supports repeated generation for robust statistical analysis
-- **Flexible Output**: Generates separate Control and AD samples
-- **wPCA Score**: Weighted PCA score that considers distribution differences across principal components
+- **Flexible Output**: Generates Control and AD samples
+- **WQS**: WQS considers distribution differences across 5 different components
 - **Multiple Metrics**: Includes KS statistics, distribution metrics, correlation analysis
 - **Visualization**: PCA scatter plots, distribution comparisons, quality score summaries
 - **Batch Processing**: Assess multiple datasets simultaneously
 
 ## Installation
 ```bash
-git clone https://github.com/lolohhhh123/GAN_WGAN-GP_gene_expression_data_generation
-cd GAN_WGAN-GP_gene_expression_data_generation
+git clone https://github.com/lolohhhh123/Gene_expression_data_generation
+cd Gene_expression_data_generation
 pip install -r requirements.txt
 
-# Please set the path for data_path, input_directory and base_output_directory in
+How to generate data:
+python main.py generate --model VAE --input_dir data/ --output_dir results/generation --runs 10
 
-line 1038    data_path = Path(r"") #  data_path
-line 1114    input_directory = Path(r"") #Enter the input_directory
-line 1115    base_output_directory = Path(r"") #Enter the base_output_directory
+How to evaluate data quality:
+python main.py evaluate --method all --real_dir data/ --synth_root results/generation --output_dir results/eval
 
-## Single Dataset Assessment
-from data_quality_assessment import DataQualityAssessor
+How to merge data:
+python main.py merge --quality_csv ... --eval_csv ... --output_file merged.csv
 
-assessor = DataQualityAssessor(random_seed=42)
-quality_report = assessor.comprehensive_data_quality_assessment(
-    real_data_path, synthetic_data_path, output_dir
-)
-
+How to run sensitivity check:
+python main.py sensitivity --results_csv merged.csv --output_dir sensitivity/
